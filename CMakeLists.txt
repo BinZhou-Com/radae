@@ -923,6 +923,16 @@ ok = diff_rms/sig_rms < 0.03 and eoo_max < 1e-4; \
 print('PASS' if ok else 'FAIL')\"")
          set_tests_properties(radae_nopy_v2_tx PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
 
+# Test V2 C receiver: C tx -> C rx pipeline. At high SNR (no noise) the
+# decoder output loss vs the original vocoder features should be <0.2.
+add_test(NAME radae_nopy_v2_rx
+         COMMAND sh -c "cd ${CMAKE_SOURCE_DIR}; \
+             ${CMAKE_CURRENT_BINARY_DIR}/src/lpcnet_demo -features wav/brian_g8sez.wav features_in.f32; \
+             cat features_in.f32 | ${RADAE_NOPY_BUILD_DIR}/src/radae_v2_tx > tx2_c.f32; \
+             cat tx2_c.f32 | ${RADAE_NOPY_BUILD_DIR}/src/radae_v2_rx --no_bpf --quiet > features_rx_c.f32; \
+             python3 loss.py features_in.f32 features_rx_c.f32 --loss_test 0.2 --clip_start 200")
+         set_tests_properties(radae_nopy_v2_rx PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
+
 endif() # RADAE_NOPY_BUILD_DIR
 
 # RADE V2 -----------------------------------------------------------------------------------------------
