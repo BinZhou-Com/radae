@@ -899,6 +899,30 @@ add_test(NAME radae_nopy_v2_dec
              python3 loss.py features_in.f32 features_v2_py.f32 --features_hat2 features_v2_c.f32 --compare")
          set_tests_properties(radae_nopy_v2_dec PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
 
+# Test V2 C transmitter: compare IQ output to tx2.py reference using RMS difference
+# EOO max diff threshold: 1e-4 (essentially float32 precision)
+# Data diff_rms/sig_rms threshold: 3% (encoder float differences are ~1.2%)
+add_test(NAME radae_nopy_v2_tx
+         COMMAND sh -c "cd ${CMAKE_SOURCE_DIR}; \
+             ${CMAKE_CURRENT_BINARY_DIR}/src/lpcnet_demo -features wav/brian_g8sez.wav features_in.f32; \
+             python3 tx2.py 250725/checkpoints/checkpoint_epoch_200.pth \
+                 features_in.f32 tx2_py.f32; \
+             cat features_in.f32 | ${RADAE_NOPY_BUILD_DIR}/src/radae_v2_tx > tx2_c.f32; \
+             python3 -c \"\
+import numpy as np; \
+py=np.fromfile('tx2_py.f32',dtype=np.complex64); \
+c=np.fromfile('tx2_c.f32',dtype=np.complex64); \
+n=min(len(py),len(c)); \
+data_py=py[:n-960]; data_c=c[:n-960]; \
+eoo_py=py[n-960:n]; eoo_c=c[n-960:n]; \
+diff_rms=np.sqrt(np.mean(np.abs(data_py-data_c)**2)); \
+sig_rms=np.sqrt(np.mean(np.abs(data_py)**2)); \
+eoo_max=np.max(np.abs(eoo_py-eoo_c)); \
+print(f'diff_rms/sig_rms: {diff_rms/sig_rms:.4f}  eoo_max_diff: {eoo_max:.2e}'); \
+ok = diff_rms/sig_rms < 0.03 and eoo_max < 1e-4; \
+print('PASS' if ok else 'FAIL')\"")
+         set_tests_properties(radae_nopy_v2_tx PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
+
 endif() # RADAE_NOPY_BUILD_DIR
 
 # RADE V2 -----------------------------------------------------------------------------------------------
