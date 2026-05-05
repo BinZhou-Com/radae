@@ -983,6 +983,45 @@ add_test(NAME radae_nopy_v2_rx_mpp_low
              python3 loss.py features_in.f32 features_rx_v2_c.f32 --loss_test 0.40 --clip_start 100 --clip_end 300")
          set_tests_properties(radae_nopy_v2_rx_mpp_low PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
 
+# V2 C receiver EOO detection: MPP channel at EbNodB=8 (mirrors v2_eoo_mpp_low)
+add_test(NAME radae_nopy_v2_rx_eoo
+         COMMAND sh -c "cd ${CMAKE_SOURCE_DIR}; \
+             test/make_g.sh; \
+             ./inference.sh 250725/checkpoints/checkpoint_epoch_200.pth wav/brian_g8sez.wav /dev/null \
+             --rate_Fs --latent-dim 56 --peak --cp 0.004 --time_offset -16 --correct_time_offset -16 \
+             --auxdata --w1_dec 128 --end_of_over_v2 --write_rx rx_v2_eoo_test.f32 \
+             --append_noise 1 --g_file g_mpp.f32 --EbNodB 8; \
+             cat rx_v2_eoo_test.f32 | ${RADAE_NOPY_BUILD_DIR}/src/radae_v2_rx --quiet 2>&1 >/dev/null")
+         set_tests_properties(radae_nopy_v2_rx_eoo PROPERTIES PASS_REGULAR_EXPRESSION "eoo: [1-9]")
+
+# V2 C receiver SNR estimator: high SNR (EbNodB=12, mirrors v2_snr_est_high)
+add_test(NAME radae_nopy_v2_rx_snr_high
+         COMMAND sh -c "cd ${CMAKE_SOURCE_DIR}; \
+             ${CMAKE_CURRENT_BINARY_DIR}/src/lpcnet_demo -features wav/david_vk5dgr.wav snr_feats.f32; \
+             python3 inference.py 250725/checkpoints/checkpoint_epoch_200.pth snr_feats.f32 /dev/null \
+             --latent-dim 56 --w1_dec 128 --auxdata --rate_Fs --cp 0.004 \
+             --time_offset -16 --correct_time_offset -16 --peak \
+             --EbNodB 12 --write_rx snr_rx_high.f32 --append_noise 1 > snr_inf_high.txt; \
+             SNR3K=\$(grep Measured snr_inf_high.txt | awk '{print \$4}'); \
+             cat snr_rx_high.f32 | ${RADAE_NOPY_BUILD_DIR}/src/radae_v2_rx --quiet \
+             --write_snr_est snr_est_v2_c_high.f32 >/dev/null; \
+             python3 check_snr_est.py \$SNR3K snr_est_v2_c_high.f32 3.0")
+         set_tests_properties(radae_nopy_v2_rx_snr_high PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
+
+# V2 C receiver SNR estimator: low SNR (EbNodB=2, mirrors v2_snr_est_low)
+add_test(NAME radae_nopy_v2_rx_snr_low
+         COMMAND sh -c "cd ${CMAKE_SOURCE_DIR}; \
+             ${CMAKE_CURRENT_BINARY_DIR}/src/lpcnet_demo -features wav/david_vk5dgr.wav snr_feats.f32; \
+             python3 inference.py 250725/checkpoints/checkpoint_epoch_200.pth snr_feats.f32 /dev/null \
+             --latent-dim 56 --w1_dec 128 --auxdata --rate_Fs --cp 0.004 \
+             --time_offset -16 --correct_time_offset -16 --peak \
+             --EbNodB 2 --write_rx snr_rx_low.f32 --append_noise 1 > snr_inf_low.txt; \
+             SNR3K=\$(grep Measured snr_inf_low.txt | awk '{print \$4}'); \
+             cat snr_rx_low.f32 | ${RADAE_NOPY_BUILD_DIR}/src/radae_v2_rx --quiet \
+             --write_snr_est snr_est_v2_c_low.f32 >/dev/null; \
+             python3 check_snr_est.py \$SNR3K snr_est_v2_c_low.f32 2.0")
+         set_tests_properties(radae_nopy_v2_rx_snr_low PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
+
 endif() # RADAE_NOPY_BUILD_DIR
 
 # RADE V2 -----------------------------------------------------------------------------------------------
