@@ -933,6 +933,56 @@ add_test(NAME radae_nopy_v2_rx
              python3 loss.py features_in.f32 features_rx_c.f32 --loss_test 0.2 --clip_start 200")
          set_tests_properties(radae_nopy_v2_rx PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
 
+# V2 C receiver AWGN high SNR
+add_test(NAME radae_nopy_v2_rx_awgn
+         COMMAND sh -c "cd ${CMAKE_SOURCE_DIR}; \
+             ./inference.sh 250725/checkpoints/checkpoint_epoch_200.pth wav/all.wav /dev/null \
+             --rate_Fs --latent-dim 56 --peak --cp 0.004 --time_offset -16 --correct_time_offset -16 \
+             --auxdata --w1_dec 128 --write_rx rx_v2_nopy.f32 \
+             --prepend_noise 1 --append_noise 2 --freq_offset 25 --correct_freq_offset; \
+             cat rx_v2_nopy.f32 | ${RADAE_NOPY_BUILD_DIR}/src/radae_v2_rx --quiet > features_rx_v2_c.f32; \
+             python3 loss.py features_in.f32 features_rx_v2_c.f32 --loss_test 0.15 \
+             --acq_time_test 2.0 --clip_start 100 --clip_end 300")
+         set_tests_properties(radae_nopy_v2_rx_awgn PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
+
+# V2 C receiver AWGN low SNR: EbNodB=1
+add_test(NAME radae_nopy_v2_rx_awgn_low
+         COMMAND sh -c "cd ${CMAKE_SOURCE_DIR}; \
+             ./inference.sh 250725/checkpoints/checkpoint_epoch_200.pth wav/all.wav /dev/null \
+             --rate_Fs --latent-dim 56 --peak --cp 0.004 --time_offset -16 --correct_time_offset -16 \
+             --auxdata --w1_dec 128 --write_rx rx_v2_nopy.f32 \
+             --prepend_noise 1 --append_noise 2 --freq_offset 25 --correct_freq_offset \
+             --EbNodB 1; \
+             cat rx_v2_nopy.f32 | ${RADAE_NOPY_BUILD_DIR}/src/radae_v2_rx --quiet > features_rx_v2_c.f32; \
+             python3 loss.py features_in.f32 features_rx_v2_c.f32 --loss_test 0.45 --clip_start 100 --clip_end 300")
+         set_tests_properties(radae_nopy_v2_rx_awgn_low PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
+
+# V2 C receiver MPP high SNR
+add_test(NAME radae_nopy_v2_rx_mpp
+         COMMAND sh -c "cd ${CMAKE_SOURCE_DIR}; \
+             test/make_g.sh; \
+             ./inference.sh 250725/checkpoints/checkpoint_epoch_200.pth wav/all.wav /dev/null \
+             --rate_Fs --latent-dim 56 --peak --cp 0.004 --time_offset -16 --correct_time_offset -16 \
+             --auxdata --w1_dec 128 --write_rx rx_v2_nopy.f32 \
+             --prepend_noise 1 --append_noise 2 --freq_offset 25 --correct_freq_offset \
+             --g_file g_mpp.f32; \
+             cat rx_v2_nopy.f32 | ${RADAE_NOPY_BUILD_DIR}/src/radae_v2_rx --quiet > features_rx_v2_c.f32; \
+             python3 loss.py features_in.f32 features_rx_v2_c.f32 --loss_test 0.15 --clip_start 100 --clip_end 300")
+         set_tests_properties(radae_nopy_v2_rx_mpp PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
+
+# V2 C receiver MPP low SNR: EbNodB=6
+add_test(NAME radae_nopy_v2_rx_mpp_low
+         COMMAND sh -c "cd ${CMAKE_SOURCE_DIR}; \
+             test/make_g.sh; \
+             ./inference.sh 250725/checkpoints/checkpoint_epoch_200.pth wav/all.wav /dev/null \
+             --rate_Fs --latent-dim 56 --peak --cp 0.004 --time_offset -16 --correct_time_offset -16 \
+             --auxdata --w1_dec 128 --write_rx rx_v2_nopy.f32 \
+             --prepend_noise 1 --append_noise 2 --freq_offset 25 --correct_freq_offset \
+             --g_file g_mpp.f32 --EbNodB 6; \
+             cat rx_v2_nopy.f32 | ${RADAE_NOPY_BUILD_DIR}/src/radae_v2_rx --quiet > features_rx_v2_c.f32; \
+             python3 loss.py features_in.f32 features_rx_v2_c.f32 --loss_test 0.40 --clip_start 100 --clip_end 300")
+         set_tests_properties(radae_nopy_v2_rx_mpp_low PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
+
 endif() # RADAE_NOPY_BUILD_DIR
 
 # RADE V2 -----------------------------------------------------------------------------------------------
