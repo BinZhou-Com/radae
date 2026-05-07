@@ -129,28 +129,6 @@ ctest -R radae_nopy
 ```
 
 
-# Over the Air/Over the Cable (OTA/OTC)
-
-The `ota_test.sh` script supports stored-file over-the-air and over-the-cable testing.  It assembles a transmit file containing a chirp reference, compressed SSB, RADE V1, and RADE V2 signals in sequence, which can be sent over a real HF channel or processed through a channel simulator.  The script performs a *controlled* test of RADE V2 over real world channels.
-
-Generate a transmit file from an input speech wav (16 kHz mono):
-```
-./ota_test.sh wav/brian_g8sez.wav -x
-```
-This produces `tx.wav`, which is suitable for transmission OTA using your SSB transmitter.  We then use a remote HF receiver to sample the received signal to a wave file, e.g. `rx.wav`.
-
-To simulate a real HF channel pass it through the `ch` channel simulator to add noise and fading:
-```
-./build/src/ch tx.wav - --No -20 | sox -t .s16 -r 8000 -c 1 - rx.wav
-```
-Decode `rx.wav` and measure ML loss against the original speech:
-```
-./ota_test.sh -r rx.wav -l wav/brian_g8sez.wav
-```
-The decoded audio files `rx_ssb.wav`, `rx_rade1.wav`, and `rx_rade2.wav` are written to the same directory as `rx.wav`. A report file and spectrogram is also produced, including objective loss measurements (if `-l` option used).
-
-See `ota_test.sh` for more information.
-
 # Training
 
 This section is optional - pre-trained models that run on a standard laptop CPU are available for experimenting with RADAE. If you wish to perform training, a serious NVIDIA GPU is required - the author used a RTX4090.
@@ -225,3 +203,59 @@ Automatic Speech Recognition (ASR) is used as an objective speech quality metric
    octave:1> radae_plots; plot_wer("241221","241221_asr_test.png")
    ```
 
+# Testing RADE
+
+You are welcome to join the RADE development effort by testing RADE, submitting bug reports or interesting test results.  There are several kinds of tests:
+
+1. Adhoc tests, e.g. trying out RADE V1/V2 using freedv-gui with your friends on air and offering a subjective opinion, e.g. "the XYL was listening to our QSO on a Tuesday afternoon and likes RADE V1 better than V2".  Have fun with these tests, it's what Ham radio is all about!  However in many cases these tests won't help us develop RADE, and we are unable to act on bug reports based on ad-hoc tests with only anecdotal evidence.  We need test results we can repeat.
+2. Stored file tests, e.g. using the `ota_test.sh` script.  These are carefully calibrated to measure the channel SNR, and test SSB, RADE V1, RADE V2 at the same peak power. This is a high quality test that is very useful to the RADE developers.  It requires Linux command line skills, and effort to run the script. You need to send us the Tx input source audio and off air Rx audio files, so we can repeat the results (instructions below).
+3. Real time tests, where RADE is integrated into an application or radio.  These are useful only when the results can be reproduced with RADE command line tools (see below).  May also show up bugs in the application/radio that are unrelated to RADE.
+
+We need repeatable, controlled test results for RADE development.
+
+Any test results must be reproducible using the RADE command line tools (our verified C port or Python OK).  The RADE team are unable to reproduce or investigate bug reports that require running an end user application or radio to reproduce (e.g. freedv-gui or other GUI application, web based SDR, hardware radio etc). This is because applications often have their own bugs, which are out of scope of RADE development.  This generally means you need to submit an off air receive audio file that reproduces the issue you are reporting with the RADE command line tools.  Application maintainers are encouraged to modify their programs to dump such a file to a disk file so the issue can be reproduced with the RADE command line tools.
+
+## Verifying RADE Integration
+
+Application (and radio) developers - to confirm that RADE is successfully integrated into your application, please perform a loss test based on the feature vectors at the input of the RADE encoder at the Tx, and output of the RADE decoder at the Rx.  The Python tool `loss.py` can be used for this test.  You may need to modify your application (or radio) to dump these vectors to a disk file.
+
+Radio developers should perform a complete end-to-end over the cable test to demonstrate successful integration. Over the air tests are not meaningful as the channel will impact the loss in unpredictable and unrepeatable fashion.
+
+The loss test will tease out gross errors like dropped buffers of samples, and more subtle issues such as distortion in signal processing steps.  There are many examples of loss tests in the RADE ctests, and `ota_test.sh` can use real radio and SDRs to perform loss tests over the cable.
+
+The [V2 test report](doc/v2_test_report.pdf) Table 10 has some examples of over the cable (OTC) loss test results (v216 line).  A pass is defined as +\- 10% of the software only loss result with the 56 second file `all.wav`.
+
+To establish the software-only loss baseline, run the V2 transmitter and receiver on `all.wav` with no channel noise (actually a very high SNR set by the default EbNodB=100). In this example `lpcnet_demo` is used to produce the input feature file `features_in.f32`.  The file `tx.f32` is the Fs=8 kHz IQ float samples sent over the "channel".  We are using the reference Python implementation:
+```
+lpcnet_demo -features wav/all.wav features_in.f32
+python3 tx2.py 250725/checkpoints/checkpoint_epoch_200.pth features_in.f32 tx.f32
+python3 rx2.py 250725/checkpoints/checkpoint_epoch_200.pth 250725a_ml_sync tx.f32 features_rx.f32 --quiet
+python3 loss.py features_in.f32 features_rx.f32 --clip_start 100 --clip_end 300
+<snip>
+loss: 0.081 start: 224 acq_time:  1.24 s 
+```
+Record the loss value printed by `loss.py` (in this example 0.081) — this is your software-only reference.  When testing RADE integrated into your application (or radio), a loss within ±10% of this figure is considered a pass. 
+
+## Stored File Tests
+
+The `ota_test.sh` script supports stored-file over-the-air and over-the-cable testing.  It assembles a transmit file containing a chirp reference, compressed SSB, RADE V1, and RADE V2 signals in sequence, which can be sent over a real HF channel or processed through a channel simulator.  The script performs a *controlled* test of SSB, RADE V1, and RADE V2 over real-world channels.
+
+Generate a transmit file from an input speech wav (16 kHz mono):
+```
+./ota_test.sh wav/brian_g8sez.wav -x
+```
+This produces `tx.wav`, which is suitable for transmission OTA using your SSB transmitter.  For OTA testing, transmit `tx.wav` and record the received signal to a wave file, e.g. `rx.wav`, using a remote HF receiver.
+
+Alternatively, simulate a real HF channel by passing `tx.wav` through the `ch` channel simulator to add noise and fading:
+```
+./build/src/ch tx.wav - --No -20 | sox -t .s16 -r 8000 -c 1 - rx.wav
+```
+Decode `rx.wav` and measure ML loss against the original speech:
+```
+./ota_test.sh -r rx.wav -l wav/brian_g8sez.wav
+```
+The decoded audio files `rx_ssb.wav`, `rx_rade1.wav`, and `rx_rade2.wav` are written to the same directory as `rx.wav`. A report file and spectrogram are also produced, including objective loss measurements (if `-l` option used).
+
+See `ota_test.sh` for more information.
+
+If submitting a test result to the RADE team, please email the input audio file (e.g. `brian_g8sez.wav`) and off air received audio file (e.g. `rx.wav`).  We can then use your files to reproduce your results.
