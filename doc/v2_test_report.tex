@@ -22,6 +22,11 @@
   \StrLeft{\commit}{7}%
 }
 
+\hypersetup{
+    colorlinks=true,       % False for boxes around links; True for colored text
+    urlcolor=blue,         % Color for external URLs
+}
+
 \begin{document}
 
 % Tikz code used to support block diagrams
@@ -43,7 +48,7 @@ pinstyle/.style = {pin edge={to-,thin,black}}
 
 \section{Introduction}
 
-This document describes the tests performed on the prototype RADE V2 waveform, and presents the test results.  Most of the tests are performed using software simulation, with a subset being performed over real radios and HF radio channels.  At the conclusion of this test campaign the V2 software will be ready for controlled, crowd sourced testing.
+This document describes the tests performed on the RADE V2 waveform, and presents the test results.  Tests have been performed by the author using software simulation (Phase A), the author using radios and HF radio channels (Phase B), and by crowd sourcing over the air results from the Amateur Radio community (Phase C).
 
 The RADE concept evolved from a discussion between Jean-Marc Valin and David Rowe, after which Jean-Marc quickly put together an initial proof-of-concept demo in late 2023. Over 2024 David built on this work to develop a practical over the air waveform for speech over HF radio channels. This waveform is denoted RADE V1. 
 Over the course of 2025 and early 2026 David has been developing RADE V2, which has several innovations that are novel to both amateur and indeed professional radio communications:
@@ -76,6 +81,7 @@ The FreeDV Project Leadership Team and many others have helped with support and 
   MPD & Multipath disturbed - a channel model for a very poor HF channel with 2 \si{Hz} fading and 4 \si{ms} delay spread. \\
   MPP & Multipath Poor - a channel model for a poor HF channel with 1 \si{Hz} fading and 2 \si{ms} delay spread. \\
   OBW & (99\% power) Occupied bandwidth - the bandwidth in \si{Hz} that contains 99\% of the transmitted power. \\
+  OTA & Over the Air \\
   Pilot symbols & Symbols inserted into a transmitted signal to aid in synchronisation. This approach was used for RADE V1 but consumes carrier power and RF bandwidth. \\
   PAPR & Peak to Average Power Ratio, a low PAPR is desirable. \\
   PNR & Peak power to noise ratio - a useful metric for SSB radio transmitters that are limited by their peak power. \\
@@ -85,7 +91,7 @@ The FreeDV Project Leadership Team and many others have helped with support and 
 \end{tabular}
 \end{table}
 
-\section{Feb 2026 Test Results}
+\section{Phase A - Simulation Tests}
 
 \subsection{Configuration}
 
@@ -413,9 +419,9 @@ The RADE V2 waveform provides a 1 BPSK symbol/frame (25 bit/s) for auxiliary tex
 
 A modern FEC code will be able to correct errors in the several percent range and break down at about 10\% BER. This suggests reliable text transfer can occur to around -3 \si{dB} on AWGN channels and 0 \si{dB} on fading channels.  It is acceptable if text transfer breaks down at very low SNRs, as we would prefer to prioritise speech at low SNRs. The text information tends to be repeated, so it is not necessary to receive every encoded text frame, even an occasional decode of a text frame would be acceptable over a several minute over. 
 
-\subsection{Initial Over the Air Tests}
+\section{Phase B - Initial Over the Air Tests}
 
-This section describes initial OTA tests using the stored file test system implemented by the script \emph{ota\_test.sh}.  The purpose of these tests was (a) see if RADE V2 actually works over real world HF channels (b) compare V2 to RADE V1 to determine if there is any improvement at low and high SNRs.  The simulated results presented above predict a 3 dB increase in sensitivity at low SNRs.  At high SNRs the ML network “loss” is significantly lower for V2, but we are not sure what that means in terms of speech quality.
+This section describes initial OTA tests using the stored file test system implemented by the script \emph{ota\_test.sh}.  These were performed by the author. The purpose of these tests was (a) see if RADE V2 actually works over real world HF channels (b) compare V2 to RADE V1 to determine if there is any improvement at low and high SNRs.  The simulated results presented above predict a 3 dB increase in sensitivity at low SNRs.  At high SNRs the ML network “loss” is significantly lower for V2, but we are not sure what that means in terms of speech quality.
 
 The \emph{ota\_test.sh} script generates a file consisting of a chirp – SSB RADE V1 – RADE V2 in sequence. This was transmitted from the authors home station (IC7200 transmitter) to various KiwiSDRs around Australia.  The chirp is used to estimate SNR of the channel, and SSB and RADE V1 are included for comparison. By sending all 4 signals at approximately the same time, we have them passing over roughly the same HF channel. In addition, several tests were conducted "Over The Cable" (OTC) - using a local (FT817) receiver connected to the transmitter via attenuators and cable - providing a ``perfect" channel.  A total of 17 test were performed during March 2026. In each case RADE V2 worked well on real HF channels, supporting the functional test aim (a) above.
 
@@ -442,9 +448,40 @@ It can be difficult to discern fine differences in speech samples using ad hoc l
 
 The OTC tests (e.g. v216) show very little impact on the loss metric, demonstrating that the signal processing through two typical HF radios (USB sound hardware, SSB filters, PA, up and down conversion) has very little impact on the RADE waveforms. This suggests loss measurements can be used as a metric for ``type approval" of RADE integration e.g. with a SDR, end user application, or hardware radio.
 
+\section{Phase C - Crowd Sourced Tests}
+
+This section describes the test results collected from a crowd sourced OTA test campaign. The goals of this test campaign are:
+\begin{enumerate}
+\item Gather further stored file OTA samples to support the Phase A \& B results, but from a wider range of speakers, HF channels, radio hardware, and applications integrating RADE V2.
+\item If any counter examples to the Phase A \& B results are encountered, explore and fix bugs if found.
+\item Measurements of PAPR from other radios and test equipment.
+\item If encountered, explore the ``underwater" voice modulation artefact often heard on V1 samples posted on social media.
+\item Gather samples from real time, PTT use of RADE V2 when integrated into 3rd party applications or radios.
+\item Gain experience in 3rd parties integrating and verifying RADE V2 operation in their application/radio. Use this information to improve the integration and verification procedure.
+\end{enumerate}
+
+\begin{table} [h]
+\caption{Phase C Test Goals.}
+\label{tab:phase3_goals}
+\centering
+\begin{tabular}{ l | c | c }
+ \hline
+ Goal & Target Samples & Collected Samples \\
+ \hline
+ Number of stored file OTA samples to collect & 20 \\
+ Number of languages & 3 \\
+ Real Time PTT conversations & 10 \\
+ PAPR measurements & 3 \\
+ \hline
+ \hline
+\end{tabular}
+\end{table}
+
+The procedures for stored file and PTT tests are documented \href{https://github.com/drowe67/radae/blob/0b1279995f79e00007237ec709a560b256f7daa0/README.md#testing-rade}{here}.  Any PTT results must be from an application of radio that has RADE V2 integration verified using \href{https://github.com/drowe67/radae/blob/0b1279995f79e00007237ec709a560b256f7daa0/README.md#verifying-rade-integration}{this} procedure.  Samples submitted must include the source audio fed to the RADE encoder, plus the received off air signal.  The idea is to have enough information to reproduce the results (e.g. by passing through the RADE decoder) and measure the loss compared to a software simulation reference. For the PAPR measurements it would be useful to have the source audio so we can measure the PAPR of the software only signal.
+
 \section{Conclusion}
 
-In Table \ref{tab:conclusion} the results from this test campaign are summarised and compared to requirements extracted from FreeDV-038.  Only performance and functional requirements have been extracted (e.g. we don't consider implementation issues like a C port or packaging).
+In Table \ref{tab:conclusion} the results from Phase A and B are summarised and compared to requirements extracted from FreeDV-038.  Phase C is a work in progress.  Only performance and functional requirements have been extracted (e.g. we don't consider implementation issues like a C port or packaging).
 
 \begin{table} [h]
 \caption{Test results compared to performance requirements}
